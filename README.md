@@ -29,8 +29,6 @@ err := structscanner.Select(db &result, "", `
 `, "apple")
 ```
 
-When passed a slice as the destination, `Select` will populate it with all rows that are returned from the query. If there are no rows, the destination slice will be empty.
-
 Often, you will have a struct with fields already tagged. When querying for such a struct, a problem that can arise is that the columns are returned with a table alias, which is missing from your struct tags. You can provide a prefix to `Select` in order to correctly map these to your existing struct:
 
 ```go
@@ -46,6 +44,8 @@ err := structscanner.Select(db, &result, "f", `
     SELECT f.* FROM fruits f WHERE id = ?
 `, fruitID)
 ``` 
+
+When passed a slice as the destination, `Select` will populate it with all rows that are returned from the query. If there are no rows, the destination slice will be empty.
 
 Querying for a collection of related entities:
 
