@@ -4,6 +4,7 @@
 
 It has the following features:
 
+* Works with `database/sql` without extra dependencies.
 * Mapping based on `db:` struct tags—only fields with a `db:` tag are mapped.
 * Mapping of NULLs to zero values—this makes handling outer joins much more practical without having to create alternate, nullable versions of your structs or peppering your queries with `IFNULL` or `COALESCE`.
 * Mapping using an optional prefix at query time—this allows structs to be mapped more easily when table aliases are being used with column names (such as with the [`columnsWithAlias`](https://github.com/Go-SQL-Driver/MySQL/#columnswithalias) option with `go-sql-driver/mysql`).
