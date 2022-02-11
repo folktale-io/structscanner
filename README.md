@@ -85,3 +85,7 @@ err := structscanner.Select(db, &result, "", `
 ```
 
 In this case, if an individual doesn’t have a sibling, the `LEFT JOIN` will produce NULLs. As this sort of usage is quite common, the fields of `Sibling` are set to their zero values rather than this being treated as an error condition.
+
+## Licensing
+
+This software is Copyright © 2022 Folktale Global Pty Ltd, and made available under an [MIT license](LICENSE).
