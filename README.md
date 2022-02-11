@@ -47,6 +47,8 @@ err := structscanner.Select(db, &result, "f", `
 
 When passed a slice as the destination, `Select` will populate it with all rows that are returned from the query. If there are no rows, the destination slice will be empty.
 
+In cases where the returned result set may be very large or unbounded, you can perform the query manually using `database/sql`, then create a `StructScanner` and pass the rows to its `Scan` method to scan one row at a time instead.
+
 Querying for a collection of related entities:
 
 ```go
