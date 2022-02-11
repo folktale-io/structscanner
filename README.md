@@ -51,8 +51,8 @@ Querying for a collection of related entities:
 
 ```go
 var result []struct {
-	O Organisation `db:"o"`
-	P Person       `db:"p"`
+	Org    Organisation `db:"o"`
+	Member Person       `db:"p"`
 }
 
 err := structscanner.Select(db, &result, "", `
