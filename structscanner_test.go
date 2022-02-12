@@ -16,20 +16,23 @@ func TestStructScanner(t *testing.T) {
 	}
 	defer db.Close()
 
+	type NestedStruct struct {
+		NestedStringValue    string  `db:"nested_string_value"`
+		NestedStringPtrValue *string `db:"nested_string_ptr_value"`
+	}
+
 	type TestStruct struct {
-		StringValue    string       `db:"string_value"`
-		StringPtrValue *string      `db:"string_ptr_value"`
-		IntValue       int          `db:"int_value"`
-		IntPtrValue    *int         `db:"int_ptr_value"`
-		BoolValue      bool         `db:"bool_value"`
-		BoolPtrValue   *bool        `db:"bool_ptr_value"`
-		TimeValue      time.Time    `db:"time_value"`
-		TimePtrValue   *time.Time   `db:"time_ptr_value"`
-		NullTimeValue  sql.NullTime `db:"null_time_value"`
-		StructValue    struct {
-			NestedStringValue    string  `db:"nested_string_value"`
-			NestedStringPtrValue *string `db:"nested_string_ptr_value"`
-		} `db:"struct_value"`
+		StringValue    string        `db:"string_value"`
+		StringPtrValue *string       `db:"string_ptr_value"`
+		IntValue       int           `db:"int_value"`
+		IntPtrValue    *int          `db:"int_ptr_value"`
+		BoolValue      bool          `db:"bool_value"`
+		BoolPtrValue   *bool         `db:"bool_ptr_value"`
+		TimeValue      time.Time     `db:"time_value"`
+		TimePtrValue   *time.Time    `db:"time_ptr_value"`
+		NullTimeValue  sql.NullTime  `db:"null_time_value"`
+		StructValue    NestedStruct  `db:"struct_value"`
+		StructPtr      *NestedStruct `db:"struct_ptr"`
 	}
 
 	t.Run("Scan", func(t *testing.T) {
@@ -52,6 +55,8 @@ func TestStructScanner(t *testing.T) {
 					"prefix.null_time_value",
 					"prefix.struct_value.nested_string_value",
 					"prefix.struct_value.nested_string_ptr_value",
+					"prefix.struct_ptr.nested_string_value",
+					"prefix.struct_ptr.nested_string_ptr_value",
 				}).AddRow(
 					"string value",
 					"string ptr value",
@@ -62,8 +67,10 @@ func TestStructScanner(t *testing.T) {
 					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
 					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
 					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
-					"nested string value",
-					"nested string ptr value",
+					"nested string value 1",
+					"nested string ptr value 1",
+					"nested string value 2",
+					"nested string ptr value 2",
 				),
 			)
 
@@ -110,11 +117,63 @@ func TestStructScanner(t *testing.T) {
 			if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.NullTimeValue.Time; expected != actual {
 				t.Errorf("Expected nulltime value %v but got %v", expected, actual)
 			}
-			if expected, actual := "nested string value", result.StructValue.NestedStringValue; expected != actual {
+			if expected, actual := "nested string value 1", result.StructValue.NestedStringValue; expected != actual {
 				t.Errorf("Expected nested string value '%s' but got '%s'", expected, actual)
 			}
-			if expected, actual := "nested string ptr value", result.StructValue.NestedStringPtrValue; expected != *actual {
-				t.Errorf("Expected nested string pointer value '%s' but got '%s'", expected, *actual)
+			if expected, actual := "nested string ptr value 1", result.StructValue.NestedStringPtrValue; actual == nil || expected != *actual {
+				t.Errorf("Expected nested string pointer value '%s' but got %v", expected, actual)
+			}
+
+			if actual := result.StructPtr; actual == nil {
+				t.Errorf("Expected nested struct pointer to have been initialised but wasn’t")
+			} else {
+				if expected, actual := "nested string value 2", result.StructPtr.NestedStringValue; expected != actual {
+					t.Errorf("Expected struct pointer to have nested string value '%s' but got '%s'", expected, actual)
+				}
+				if expected, actual := "nested string ptr value 2", result.StructPtr.NestedStringPtrValue; actual == nil || expected != *actual {
+					t.Errorf("Expected struct pointer to have nested string ptr value '%s' but got %v", expected, actual)
+				}
+			}
+		})
+
+		t.Run("instantiates pointer fields when a nested field is set to non-NULL", func(t *testing.T) {
+			ss := For((*TestStruct)(nil), "prefix")
+
+			mockQuery := fmt.Sprintf("some query")
+
+			dbMock.ExpectQuery(mockQuery).WillReturnRows(
+				sqlmock.NewRows([]string{
+					"prefix.struct_ptr.nested_string_ptr_value",
+				}).AddRow(
+					"nested string ptr value 2",
+				),
+			)
+
+			rows, err := db.Query(mockQuery)
+			if err != nil {
+				t.Fatalf("Error executing query: %v", err)
+			}
+
+			if !rows.Next() {
+				t.Fatalf("Expected one row but got none")
+			}
+
+			var result TestStruct
+
+			err = ss.Scan(rows, &result)
+			if err != nil {
+				t.Fatalf("Expected success but got error: %v", err)
+			}
+
+			if actual := result.StructPtr; actual == nil {
+				t.Errorf("Expected nested struct pointer to have been initialised but wasn’t")
+			} else {
+				if expected, actual := "", result.StructPtr.NestedStringValue; expected != actual {
+					t.Errorf("Expected struct pointer to have nested string value '%s' but got '%s'", expected, actual)
+				}
+				if expected, actual := "nested string ptr value 2", result.StructPtr.NestedStringPtrValue; actual == nil || expected != *actual {
+					t.Errorf("Expected struct pointer to have nested string ptr value '%s' but got %v", expected, actual)
+				}
 			}
 		})
 
@@ -156,7 +215,9 @@ func TestStructScanner(t *testing.T) {
 					"null_time_value",
 					"struct_value.nested_string_value",
 					"struct_value.nested_string_ptr_value",
+					"struct_ptr.nested_string_ptr_value",
 				}).AddRow(
+					nil,
 					nil,
 					nil,
 					nil,
@@ -217,6 +278,10 @@ func TestStructScanner(t *testing.T) {
 			}
 			if expected, actual := (*string)(nil), result.StructValue.NestedStringPtrValue; expected != actual {
 				t.Errorf("Expected nil nested string pointer value but got '%s'", *actual)
+			}
+
+			if actual := result.StructPtr; actual != nil {
+				t.Errorf("Expected nested struct pointer to be nil but was instantiated")
 			}
 		})
 

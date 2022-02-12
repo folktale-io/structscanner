@@ -80,7 +80,26 @@ func (s *StructScanner) setFields(destPtr interface{}) {
 }
 
 func (s *StructScanner) setNestedField(root reflect.Value, pathIndices []int, value reflect.Value) {
-	destField := root.FieldByIndex(pathIndices)
+	destField := root
+	for i := range pathIndices {
+		if destField.Kind() == reflect.Ptr {
+			if destField.IsNil() {
+
+				// We’re setting a NULL - don’t keep traversing
+				if !value.IsValid() {
+					return
+				}
+
+				// Instantiate a zero instance for the pointer
+				newValue := reflect.New(destField.Type().Elem())
+				destField.Set(newValue)
+			}
+
+			destField = destField.Elem()
+		}
+
+		destField = destField.Field(pathIndices[i])
+	}
 
 	if !value.IsValid() {
 		destField.Set(reflect.Zero(destField.Type()))
