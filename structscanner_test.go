@@ -32,189 +32,241 @@ func TestStructScanner(t *testing.T) {
 		} `db:"struct_value"`
 	}
 
-	t.Run("maps fields from query to struct", func(t *testing.T) {
-		ss := For((*TestStruct)(nil), "prefix")
+	t.Run("Scan", func(t *testing.T) {
 
-		mockQuery := fmt.Sprintf("some query")
+		t.Run("maps fields from query to struct", func(t *testing.T) {
+			ss := For((*TestStruct)(nil), "prefix")
 
-		dbMock.ExpectQuery(mockQuery).WillReturnRows(
-			sqlmock.NewRows([]string{
-				"prefix.string_value",
-				"prefix.string_ptr_value",
-				"prefix.int_value",
-				"prefix.int_ptr_value",
-				"prefix.bool_value",
-				"prefix.bool_ptr_value",
-				"prefix.time_value",
-				"prefix.time_ptr_value",
-				"prefix.null_time_value",
-				"prefix.struct_value.nested_string_value",
-				"prefix.struct_value.nested_string_ptr_value",
-			}).AddRow(
-				"string value",
-				"string ptr value",
-				123,
-				123,
-				true,
-				true,
-				time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
-				time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
-				time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
-				"nested string value",
-				"nested string ptr value",
-			),
-		)
+			mockQuery := fmt.Sprintf("some query")
 
-		rows, err := db.Query(mockQuery)
-		if err != nil {
-			t.Fatalf("Error executing query: %v", err)
-		}
+			dbMock.ExpectQuery(mockQuery).WillReturnRows(
+				sqlmock.NewRows([]string{
+					"prefix.string_value",
+					"prefix.string_ptr_value",
+					"prefix.int_value",
+					"prefix.int_ptr_value",
+					"prefix.bool_value",
+					"prefix.bool_ptr_value",
+					"prefix.time_value",
+					"prefix.time_ptr_value",
+					"prefix.null_time_value",
+					"prefix.struct_value.nested_string_value",
+					"prefix.struct_value.nested_string_ptr_value",
+				}).AddRow(
+					"string value",
+					"string ptr value",
+					123,
+					123,
+					true,
+					true,
+					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
+					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
+					time.Date(2022, 02, 11, 12, 13, 14, 0, time.UTC),
+					"nested string value",
+					"nested string ptr value",
+				),
+			)
 
-		if !rows.Next() {
-			t.Fatalf("Expected one row but got none")
-		}
+			rows, err := db.Query(mockQuery)
+			if err != nil {
+				t.Fatalf("Error executing query: %v", err)
+			}
 
-		var result TestStruct
+			if !rows.Next() {
+				t.Fatalf("Expected one row but got none")
+			}
 
-		err = ss.Scan(rows, &result)
-		if err != nil {
-			t.Fatalf("Expected success but got error: %v", err)
-		}
+			var result TestStruct
 
-		if expected, actual := "string value", result.StringValue; expected != actual {
-			t.Errorf("Expected string value '%s' but got '%s'", expected, actual)
-		}
-		if expected, actual := "string ptr value", result.StringPtrValue; expected != *actual {
-			t.Errorf("Expected string pointer value '%s' but got '%s'", expected, *actual)
-		}
-		if expected, actual := 123, result.IntValue; expected != actual {
-			t.Errorf("Expected int value %d but got %d", expected, actual)
-		}
-		if expected, actual := 123, result.IntPtrValue; expected != *actual {
-			t.Errorf("Expected int pointer value %d but got %d", expected, *actual)
-		}
-		if actual := result.BoolValue; !actual {
-			t.Errorf("Expected bool value to be true but wasn’t")
-		}
-		if actual := result.BoolPtrValue; !(*actual) {
-			t.Errorf("Expected bool pointer value to be true but wasn’t")
-		}
-		if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.TimeValue; expected != actual {
-			t.Errorf("Expected time value %v but got %v", expected, actual)
-		}
-		if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.TimePtrValue; expected != *actual {
-			t.Errorf("Expected time pointer value %v but got %v", expected, *actual)
-		}
-		if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.NullTimeValue.Time; expected != actual {
-			t.Errorf("Expected nulltime value %v but got %v", expected, actual)
-		}
-		if expected, actual := "nested string value", result.StructValue.NestedStringValue; expected != actual {
-			t.Errorf("Expected nested string value '%s' but got '%s'", expected, actual)
-		}
-		if expected, actual := "nested string ptr value", result.StructValue.NestedStringPtrValue; expected != *actual {
-			t.Errorf("Expected nested string pointer value '%s' but got '%s'", expected, *actual)
-		}
-	})
+			err = ss.Scan(rows, &result)
+			if err != nil {
+				t.Fatalf("Expected success but got error: %v", err)
+			}
 
-	t.Run("maps NULLs to zero values in struct", func(t *testing.T) {
-		ss := For((*TestStruct)(nil), "")
+			if expected, actual := "string value", result.StringValue; expected != actual {
+				t.Errorf("Expected string value '%s' but got '%s'", expected, actual)
+			}
+			if expected, actual := "string ptr value", result.StringPtrValue; expected != *actual {
+				t.Errorf("Expected string pointer value '%s' but got '%s'", expected, *actual)
+			}
+			if expected, actual := 123, result.IntValue; expected != actual {
+				t.Errorf("Expected int value %d but got %d", expected, actual)
+			}
+			if expected, actual := 123, result.IntPtrValue; expected != *actual {
+				t.Errorf("Expected int pointer value %d but got %d", expected, *actual)
+			}
+			if actual := result.BoolValue; !actual {
+				t.Errorf("Expected bool value to be true but wasn’t")
+			}
+			if actual := result.BoolPtrValue; !(*actual) {
+				t.Errorf("Expected bool pointer value to be true but wasn’t")
+			}
+			if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.TimeValue; expected != actual {
+				t.Errorf("Expected time value %v but got %v", expected, actual)
+			}
+			if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.TimePtrValue; expected != *actual {
+				t.Errorf("Expected time pointer value %v but got %v", expected, *actual)
+			}
+			if expected, actual := time.Date(2022, 2, 11, 12, 13, 14, 0, time.UTC), result.NullTimeValue.Time; expected != actual {
+				t.Errorf("Expected nulltime value %v but got %v", expected, actual)
+			}
+			if expected, actual := "nested string value", result.StructValue.NestedStringValue; expected != actual {
+				t.Errorf("Expected nested string value '%s' but got '%s'", expected, actual)
+			}
+			if expected, actual := "nested string ptr value", result.StructValue.NestedStringPtrValue; expected != *actual {
+				t.Errorf("Expected nested string pointer value '%s' but got '%s'", expected, *actual)
+			}
+		})
 
-		stringValue := "string value"
-		intValue := 123
-		boolValue := true
-		timeValue := time.Now().UTC()
-		nestedStringValue := "nested string value"
+		t.Run("maps NULLs to zero values in struct", func(t *testing.T) {
+			ss := For((*TestStruct)(nil), "")
 
-		result := TestStruct{
-			StringValue:    stringValue,
-			StringPtrValue: &stringValue,
-			IntValue:       intValue,
-			IntPtrValue:    &intValue,
-			BoolValue:      true,
-			BoolPtrValue:   &boolValue,
-			TimeValue:      timeValue,
-			TimePtrValue:   &timeValue,
-			NullTimeValue:  sql.NullTime{Time: timeValue, Valid: true},
-		}
-		result.StructValue.NestedStringValue = nestedStringValue
-		result.StructValue.NestedStringPtrValue = &nestedStringValue
+			stringValue := "string value"
+			intValue := 123
+			boolValue := true
+			timeValue := time.Now().UTC()
+			nestedStringValue := "nested string value"
 
-		mockQuery := fmt.Sprintf("some query")
+			result := TestStruct{
+				StringValue:    stringValue,
+				StringPtrValue: &stringValue,
+				IntValue:       intValue,
+				IntPtrValue:    &intValue,
+				BoolValue:      true,
+				BoolPtrValue:   &boolValue,
+				TimeValue:      timeValue,
+				TimePtrValue:   &timeValue,
+				NullTimeValue:  sql.NullTime{Time: timeValue, Valid: true},
+			}
+			result.StructValue.NestedStringValue = nestedStringValue
+			result.StructValue.NestedStringPtrValue = &nestedStringValue
 
-		dbMock.ExpectQuery(mockQuery).WillReturnRows(
-			sqlmock.NewRows([]string{
-				"string_value",
-				"string_ptr_value",
-				"int_value",
-				"int_ptr_value",
-				"bool_value",
-				"bool_ptr_value",
-				"time_value",
-				"time_ptr_value",
-				"null_time_value",
-				"struct_value.nested_string_value",
-				"struct_value.nested_string_ptr_value",
-			}).AddRow(
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-			),
-		)
+			mockQuery := fmt.Sprintf("some query")
 
-		rows, err := db.Query(mockQuery)
-		if err != nil {
-			t.Fatalf("Error executing query: %v", err)
-		}
+			dbMock.ExpectQuery(mockQuery).WillReturnRows(
+				sqlmock.NewRows([]string{
+					"string_value",
+					"string_ptr_value",
+					"int_value",
+					"int_ptr_value",
+					"bool_value",
+					"bool_ptr_value",
+					"time_value",
+					"time_ptr_value",
+					"null_time_value",
+					"struct_value.nested_string_value",
+					"struct_value.nested_string_ptr_value",
+				}).AddRow(
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				),
+			)
 
-		if !rows.Next() {
-			t.Fatalf("Expected one row but got none")
-		}
+			rows, err := db.Query(mockQuery)
+			if err != nil {
+				t.Fatalf("Error executing query: %v", err)
+			}
 
-		err = ss.Scan(rows, &result)
-		if err != nil {
-			t.Fatalf("Expected success but got error: %v", err)
-		}
+			if !rows.Next() {
+				t.Fatalf("Expected one row but got none")
+			}
 
-		if expected, actual := "", result.StringValue; expected != actual {
-			t.Errorf("Expected string value '%s' but got '%s'", expected, actual)
-		}
-		if expected, actual := (*string)(nil), result.StringPtrValue; expected != actual {
-			t.Errorf("Expected nil string pointer value but got '%s'", *actual)
-		}
-		if expected, actual := 0, result.IntValue; expected != actual {
-			t.Errorf("Expected int value %d but got %d", expected, actual)
-		}
-		if expected, actual := (*int)(nil), result.IntPtrValue; expected != actual {
-			t.Errorf("Expected nil int pointer value but got %d", *actual)
-		}
-		if actual := result.BoolValue; actual {
-			t.Errorf("Expected bool value to be false but wasn’t")
-		}
-		if actual := result.BoolPtrValue; actual != nil {
-			t.Errorf("Expected bool pointer value to be nil but wasn’t")
-		}
-		if expected, actual := (time.Time{}), result.TimeValue; expected != actual {
-			t.Errorf("Expected time value %v but got %v", expected, actual)
-		}
-		if expected, actual := (*time.Time)(nil), result.TimePtrValue; expected != actual {
-			t.Errorf("Expected nil time pointer value but got %v", *actual)
-		}
-		if actual := result.NullTimeValue.Valid; actual {
-			t.Errorf("Expected invalid nulltime value but was valid")
-		}
-		if expected, actual := "", result.StructValue.NestedStringValue; expected != actual {
-			t.Errorf("Expected nested string value '%s' but got '%s'", expected, actual)
-		}
-		if expected, actual := (*string)(nil), result.StructValue.NestedStringPtrValue; expected != actual {
-			t.Errorf("Expected nil nested string pointer value but got '%s'", *actual)
-		}
+			err = ss.Scan(rows, &result)
+			if err != nil {
+				t.Fatalf("Expected success but got error: %v", err)
+			}
+
+			if expected, actual := "", result.StringValue; expected != actual {
+				t.Errorf("Expected string value '%s' but got '%s'", expected, actual)
+			}
+			if expected, actual := (*string)(nil), result.StringPtrValue; expected != actual {
+				t.Errorf("Expected nil string pointer value but got '%s'", *actual)
+			}
+			if expected, actual := 0, result.IntValue; expected != actual {
+				t.Errorf("Expected int value %d but got %d", expected, actual)
+			}
+			if expected, actual := (*int)(nil), result.IntPtrValue; expected != actual {
+				t.Errorf("Expected nil int pointer value but got %d", *actual)
+			}
+			if actual := result.BoolValue; actual {
+				t.Errorf("Expected bool value to be false but wasn’t")
+			}
+			if actual := result.BoolPtrValue; actual != nil {
+				t.Errorf("Expected bool pointer value to be nil but wasn’t")
+			}
+			if expected, actual := (time.Time{}), result.TimeValue; expected != actual {
+				t.Errorf("Expected time value %v but got %v", expected, actual)
+			}
+			if expected, actual := (*time.Time)(nil), result.TimePtrValue; expected != actual {
+				t.Errorf("Expected nil time pointer value but got %v", *actual)
+			}
+			if actual := result.NullTimeValue.Valid; actual {
+				t.Errorf("Expected invalid nulltime value but was valid")
+			}
+			if expected, actual := "", result.StructValue.NestedStringValue; expected != actual {
+				t.Errorf("Expected nested string value '%s' but got '%s'", expected, actual)
+			}
+			if expected, actual := (*string)(nil), result.StructValue.NestedStringPtrValue; expected != actual {
+				t.Errorf("Expected nil nested string pointer value but got '%s'", *actual)
+			}
+		})
+
+		t.Run("maps successive structs without sharing pointers", func(t *testing.T) {
+			ss := For((*TestStruct)(nil), "")
+
+			mockQuery := fmt.Sprintf("some query")
+
+			string1 := "string 1"
+			string2 := "string 2"
+
+			dbMock.ExpectQuery(mockQuery).WillReturnRows(
+				sqlmock.NewRows([]string{
+					"string_ptr_value",
+				}).
+					AddRow(&string1).
+					AddRow(&string2),
+			)
+
+			rows, err := db.Query(mockQuery)
+			if err != nil {
+				t.Fatalf("Error executing query: %v", err)
+			}
+
+			if !rows.Next() {
+				t.Fatalf("Expected a first row but got none")
+			}
+
+			var result1 TestStruct
+			err = ss.Scan(rows, &result1)
+			if err != nil {
+				t.Fatalf("Expected success scanning first resut but got error: %v", err)
+			}
+
+			if !rows.Next() {
+				t.Fatalf("Expected a second row but got none")
+			}
+
+			var result2 TestStruct
+			err = ss.Scan(rows, &result2)
+			if err != nil {
+				t.Fatalf("Expected success scanning second result but got error: %v", err)
+			}
+
+			if expected, actual := string1, result1.StringPtrValue; actual == nil || expected != *actual {
+				t.Errorf("Expected first result to point to '%s' but was %v", expected, actual)
+			}
+			if expected, actual := string2, result2.StringPtrValue; actual == nil || expected != *actual {
+				t.Errorf("Expected second result to point to '%s' but was %v", expected, actual)
+			}
+		})
 	})
 }
