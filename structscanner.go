@@ -74,21 +74,24 @@ func (s *StructScanner) setFields(destPtr interface{}) {
 	destValue := reflect.ValueOf(destPtr).Elem()
 
 	for i := range s.mappedFields {
-		destField := destValue.FieldByIndex(s.mappedFields[i].Indices)
-
 		instanceValue := reflect.ValueOf(s.mappedFieldPtrs[i]).Elem().Elem()
+		s.setNestedField(destValue, s.mappedFields[i].Indices, instanceValue)
+	}
+}
 
-		if !instanceValue.IsValid() {
-			destField.Set(reflect.Zero(destField.Type()))
+func (s *StructScanner) setNestedField(root reflect.Value, pathIndices []int, value reflect.Value) {
+	destField := root.FieldByIndex(pathIndices)
 
-		} else if destField.Kind() == reflect.Ptr {
-			value := reflect.New(s.mappedFields[i].Type)
-			value.Elem().Set(instanceValue)
-			destField.Set(value)
+	if !value.IsValid() {
+		destField.Set(reflect.Zero(destField.Type()))
 
-		} else {
-			destField.Set(instanceValue)
-		}
+	} else if destField.Kind() == reflect.Ptr {
+		newValue := reflect.New(destField.Type().Elem())
+		newValue.Elem().Set(value)
+		destField.Set(newValue)
+
+	} else {
+		destField.Set(value)
 	}
 }
 
