@@ -6,8 +6,20 @@ import (
 	"reflect"
 )
 
-func Select(tx Queryer, dest interface{}, prefix string, query string, args ...interface{}) error {
-	destType := reflect.TypeOf(dest)
+// Select performs a database query, then scans the results into destPtr, which
+// must be a pointer to a struct or a slice.
+//
+// If the destination is a struct, a single row is scanned into the struct. If
+// no rows are returned by the query, sql.ErrNoRows is returned.
+//
+// If the destination is a slice, all rows from the query are scanned and placed
+// in the slice. If no rows are returned by the query, the destination will be
+// an empty slice.
+//
+// Columns returned from the query are mapped to struct fields using their `db:`
+// tags, and column names are assumed to begin with prefix when mapping.
+func Select(tx Queryer, destPtr interface{}, prefix string, query string, args ...interface{}) error {
+	destType := reflect.TypeOf(destPtr)
 	if destType.Kind() != reflect.Ptr {
 		panic("pointer destination expected")
 	}
@@ -25,8 +37,8 @@ func Select(tx Queryer, dest interface{}, prefix string, query string, args ...i
 			return sql.ErrNoRows
 		}
 
-		s := For(dest, prefix)
-		return s.Scan(rows, dest)
+		s := For(destPtr, prefix)
+		return s.Scan(rows, destPtr)
 
 	} else if destType.Kind() == reflect.Slice {
 		elemType := destType.Elem()
@@ -45,7 +57,7 @@ func Select(tx Queryer, dest interface{}, prefix string, query string, args ...i
 			elemDest = reflect.New(elemType)
 		}
 
-		reflect.ValueOf(dest).Elem().Set(resultValue.Elem())
+		reflect.ValueOf(destPtr).Elem().Set(resultValue.Elem())
 
 		return nil
 	}

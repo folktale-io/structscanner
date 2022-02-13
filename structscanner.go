@@ -8,12 +8,14 @@ import (
 )
 
 // StructScanner represents a mapping from database columns to a struct type,
-// and can be used to scan database rows to struct instances while ignoring NULL
-// values. This makes it easier to implement outer joins where many fields may
-// be NULL, but assumes that the zero value of the struct fields is sensible
-// given a NULL.
+// and can be used to scan database rows to struct instances.
 //
-// Only database fields with `db:` tags are mapped.
+// Struct fields with a `db:` tag are mapped using the name specified in the tag
+// as the column name. Only fields with `db:` tags are mapped.
+//
+// NULL values from the database are mapped to zero values on the struct.
+//
+// A StructScanner is not safe for concurrent use by multiple Goroutines.
 type StructScanner struct {
 	prefix          string
 	layout          *structLayout
@@ -54,6 +56,14 @@ func (s *StructScanner) mapColumns(rows *sql.Rows) error {
 	return nil
 }
 
+// Scan populates the specified struct from a database row. Fields in the struct
+// are set according to values in the row, based on the column name and the
+// `db:` tag of the field. NULL values in the row result in the corresponding
+// fields being set to their zero value.
+//
+// Columns are mapped when a row is first scanned. It is not safe to call Scan
+// on a StructScanner with a query returning different columns after the first
+// call.
 func (s *StructScanner) Scan(rows *sql.Rows, destPtr interface{}) error {
 	err := s.mapColumns(rows)
 	if err != nil {
@@ -114,7 +124,12 @@ func (s *StructScanner) setNestedField(root reflect.Value, pathIndices []int, va
 	}
 }
 
-func For(structPtr interface{}, prefix string) *StructScanner {
+// For returns a StructScanner suitable for scanning a struct of the type
+// given by structPtr.
+//
+// A prefix may be specified; struct fields are mapped assuming that the columns
+// from the database have the specified prefix with a dot (.) separator.
+func For(structPtr interface{}, prefix string) StructScanner {
 	structType := reflect.TypeOf(structPtr)
 
 	cached, ok := cachedLayouts.Load(structType)
@@ -122,7 +137,7 @@ func For(structPtr interface{}, prefix string) *StructScanner {
 		cached, _ = cachedLayouts.LoadOrStore(structType, newStructLayout(structType))
 	}
 
-	scanner := &StructScanner{
+	scanner := StructScanner{
 		prefix: prefix,
 		layout: cached.(*structLayout),
 	}
