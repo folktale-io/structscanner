@@ -3,9 +3,10 @@ package structscanner
 import (
 	"database/sql"
 	"fmt"
-	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
 	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
 )
 
 func TestStructScanner(t *testing.T) {
@@ -331,6 +332,56 @@ func TestStructScanner(t *testing.T) {
 			}
 			if expected, actual := string2, result2.StringPtrValue; actual == nil || expected != *actual {
 				t.Errorf("Expected second result to point to '%s' but was %v", expected, actual)
+			}
+		})
+
+		t.Run("panics when no destination field exists to receive a value", func(t *testing.T) {
+			ss := For((*TestStruct)(nil), "prefix")
+
+			mockQuery := fmt.Sprintf("some query")
+
+			dbMock.ExpectQuery(mockQuery).WillReturnRows(
+				sqlmock.NewRows([]string{
+					"prefix.nonexistent_field",
+				}).AddRow(
+					"string value",
+				),
+			)
+
+			rows, err := db.Query(mockQuery)
+			if err != nil {
+				t.Fatalf("Error executing query: %v", err)
+			}
+
+			if !rows.Next() {
+				t.Fatalf("Expected one row but got none")
+			}
+
+			var result TestStruct
+			var panicValue any
+
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						panicValue = r
+					}
+				}()
+
+				_ = ss.Scan(rows, &result)
+			}()
+
+			if panicValue == nil {
+				t.Fatalf("Expected a panic but returned from Scan")
+			}
+
+			switch v := panicValue.(type) {
+			case string:
+				if expected, actual := "no destination field for 'prefix.nonexistent_field'", v; expected != actual {
+					t.Errorf("Expected panic with '%s' but was '%s'", expected, actual)
+				}
+
+			default:
+				t.Fatalf("Panicked with unexpected value %v", panicValue)
 			}
 		})
 	})
