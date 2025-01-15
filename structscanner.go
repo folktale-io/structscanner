@@ -49,7 +49,7 @@ func (s *StructScanner) mapColumns(rows *sql.Rows) error {
 			panic(fmt.Sprintf("no destination field for '%s'", columns[i]))
 		}
 
-		s.mappedFieldPtrs[i] = reflect.New(reflect.PtrTo(field.Type)).Interface()
+		s.mappedFieldPtrs[i] = reflect.New(reflect.PointerTo(field.Type)).Interface()
 		s.mappedFields[i] = field
 	}
 
