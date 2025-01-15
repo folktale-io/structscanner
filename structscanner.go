@@ -44,13 +44,17 @@ func (s *StructScanner) mapColumns(rows *sql.Rows) error {
 	s.mappedFields = make([]*field, len(columns))
 
 	for i := range columns {
-		field := s.layout.fieldsByName[s.columnWithoutPrefix(columns[i])]
-		if field == nil {
-			panic(fmt.Sprintf("no destination field for '%s'", columns[i]))
+		f := s.layout.fieldsByName[s.columnWithoutPrefix(columns[i])]
+		if f == nil {
+			if !ignoreNonexistentFields {
+				panic(fmt.Sprintf("no destination field for '%s'", columns[i]))
+			}
+
+			f = unknownField
 		}
 
-		s.mappedFieldPtrs[i] = reflect.New(reflect.PointerTo(field.Type)).Interface()
-		s.mappedFields[i] = field
+		s.mappedFieldPtrs[i] = reflect.New(reflect.PointerTo(f.Type)).Interface()
+		s.mappedFields[i] = f
 	}
 
 	return nil
@@ -84,8 +88,13 @@ func (s *StructScanner) setFields(destPtr interface{}) {
 	destValue := reflect.ValueOf(destPtr).Elem()
 
 	for i := range s.mappedFields {
+		mappedField := s.mappedFields[i]
+		if mappedField == unknownField {
+			continue
+		}
+
 		instanceValue := reflect.ValueOf(s.mappedFieldPtrs[i]).Elem().Elem()
-		s.setNestedField(destValue, s.mappedFields[i].Indices, instanceValue)
+		s.setNestedField(destValue, mappedField.Indices, instanceValue)
 	}
 }
 
